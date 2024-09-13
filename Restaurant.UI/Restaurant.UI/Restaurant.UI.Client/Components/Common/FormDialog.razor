@@ -1,0 +1,149 @@
+﻿@inject IJSRuntime JSRuntime
+@using Restaurant.UI.Client.Models
+@typeparam TType
+
+@if (FormData != null && FormData.State.Visible)
+{
+    <div class="modal fade show" data-bs-backdrop="static" data-bs-keyboard="false" style="display: block; padding-left: 0px;" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true" role="dialog">
+        <div class="modal-dialog modal-dialog-centered @Size">
+            <EditForm Model="FormData.Model" OnValidSubmit="Submit">
+                <div class="modal-content">
+                    <div class="modal-header form-dialog-header">
+                        <h5 class="modal-title" id="staticBackdropLabel"><strong>@Title</strong></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="Cancel"></button>
+                    </div>
+                    <div class="modal-body form-dialog-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <FormValidator @ref="@formValidator" />
+                                    <ValidationSummary />                              
+
+                                @if (FormData.State.Errors.Any())
+                                {
+                                    <ul class="validation-errors">
+                                        @foreach (string error in FormData.State.Errors)
+                                        {
+                                            <li class="validation-message">@error</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        </div>
+                        @ChildBodyContext(FormData.Model!)
+
+                    </div>
+                    <div class="modal-footer form-dialog-footer">
+                        @if (FormData.State.Proccesing)
+                        {
+                            <span class="btn btn-info disabled">
+                                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                                Proccesing
+                            </span>
+                        }
+                        else
+                        {
+                            @if (!string.IsNullOrWhiteSpace(CancelBtnTxt))
+                            {
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="Cancel">@CancelBtnTxt</button>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(AcceptBtnTxt))
+                            {
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="@AcceptIconClass"></i>@AcceptBtnTxt
+                                </button>
+                            }
+                        }
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+
+@code {
+    //This component uses Bootstrap 5.1
+
+    private FormValidator? formValidator;
+
+    public FormValidator? FormValidator { 
+        get
+        {
+            return formValidator;
+        }
+    }
+
+    [Parameter]
+    public FormDialogModel<TType> FormData { get; set; } = new FormDialogModel<TType>();
+
+    [Parameter]
+    public RenderFragment<TType> ChildBodyContext { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string AcceptBtnTxt { get; set; } = "Accept";
+
+    [Parameter]
+    public string AcceptIconClass { get; set; } = "";
+
+    [Parameter]
+    public string CancelBtnTxt { get; set; } = "Cancel";
+
+    [Parameter]
+    public string CancelIconClass { get; set; } = "";
+
+    [Parameter]
+    public string Size { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnAccept { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    public async Task Submit(EditContext ctx)
+    {
+        //Change State of Processing
+        FormData.State.BegingProcessing();
+
+        if (PrintErrors())
+            await OnAccept.InvokeAsync();
+    }
+
+    private bool PrintErrors()
+    {
+        //Update model Errors
+        formValidator!.ClearErrors();
+
+        if (formValidator is not null && FormData.Model is not null)
+        {
+            var errors = ((ISelfValidate)FormData.Model).Validate();
+
+            if (errors.Any())
+            {
+                formValidator?.DisplayErrors(errors);
+                FormData.State.Show();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public async Task Cancel()
+    {
+        FormData.State.Hide();
+        await OnCancel.InvokeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JSRuntime.InvokeVoidAsync("DisableEnterKey");
+    }
+}
+
+
+

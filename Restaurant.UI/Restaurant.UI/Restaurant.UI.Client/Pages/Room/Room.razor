@@ -1,0 +1,333 @@
+﻿@page "/setting/rooms"
+@using Microsoft.AspNetCore.Authorization
+@using Restaurant.UI.Client.Components.Common
+@using Restaurant.UI.Client.Models
+@using SharedLib.Models.Room
+@using SharedLib.Models.Waiter
+
+@inherits PageBase
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(false))
+
+
+<AddPageTitle PageTitle="Rooms" />
+
+
+<EditForm Model="Filter" OnValidSubmit="RefreshResults" FormName="RoomFilter">
+    <div class="card">
+        <div class="card-header">
+            <b>Filter</b>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="row mb-3">
+                        <label for="ipt_roomFilterName" class="col-md-2 col-form-label">Name</label>
+                        <div class="col-md-8">
+                            <InputText id="ipt_roomFilterName" @bind-Value="@Filter.Name" pattern="[a-zA-Z]+" title="Text only" class="form-control outline-logging-red input-sm" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row mb-3">
+                        <label for="ips_roomFilterWaiter" class="col-md-4 col-form-label">Responsable Waiter</label>
+                        <div class="col-md-8">
+                            <InputSelect id="ips_roomFilterWaiter" @bind-Value="@Filter.WaiterId" class="form-control outline-logging-red input-sm">
+                                <option value=""></option>
+                                @foreach (var option in WaiterOptions)
+                                {
+                                    <option value="@option.Id">@option.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-end align-items-center">
+                <a class="btn btn-warning btn-sm" title="Clear Search parameters" @onclick="async () => await ClearSearch()">
+                    <i class="fa fa-eraser" aria-hidden="true"></i>
+                </a>
+                <a class="btn btn-primary btn-sm mx-1" title="Add New Room" @onclick="async () => await OpenRoomShowDialog(null)">
+                    <i class="fa fa-plus" aria-hidden="true"></i>
+                </a>
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="fa fa-search" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+<div class="row table-row">
+    <div class="col-md-12">
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Name</th>
+                    <th style="width: 15%;">Responsable Waiter</th>
+                    <th style="width: 20%;">Theme</th>
+                    <th style="width: 50%;">Description</th>
+                    <th style="width: 5%;">
+                        <div class="pull-right me-3">
+                            <i class="fa fa-cog" aria-hidden="true"></i>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var room in Rooms)
+                {
+                    <tr>
+                        <td>@room.Name</td>
+                        <td>@room.WaiterName</td>
+                        <td>@room.Theme</td>
+                        <td>@room.Description</td>
+                        <td>
+                            <div class="d-flex justify-content-end align-items-center">
+                                <a class="me-2 cursor-pointer" tite="Update" @onclick="async () => await OpenRoomShowDialog(room)">
+                                    <span class="fa fa-save text-secondary" aria-hidden="true" role="button"></span>
+                                </a>
+                                <a tite="Delete" @onclick="async () => await DeleteRoom(room.Id)" class="cursor-pointer">
+                                    <span class="fa fa-trash text-danger" role="button" aria-hidden="true"></span>
+                                </a>
+                            </div>
+                        </td>
+
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<hr class="bg-black w-100 mt-0" style="padding:2px;" />
+<div class="row">
+    <div class="col-md-12">
+        <Pager Result="@RoomPagedResult" OnPagedChanged="async (p) => await RefreshPageByNumber(p)" />
+    </div>
+</div>
+
+<FormDialog @rendermode="InteractiveAuto" FormData="@RoomFormData" Title="@((RoomFormData.Model is null || RoomFormData.Model!.Id == 0) ? "Add New Room" : "Update Room")"
+            OnAccept="PostChanges" Context="editModel">
+    <ChildBodyContext>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label for="ipt_roomName" class="form-label">Name</label>
+                    @if (editModel.Id == 0)
+                    {
+                        <InputText id="ipt_roomName" @bind-Value="@editModel.Name" class="form-control input-sm" placeholder="Room name..." />
+                    }
+                    else
+                    {
+                        <span class="form-control"> @editModel.Name </span>
+                    }
+                </div>
+                <div class="mb-3">
+                    <label for="ipt_roomTheme" class="form-label">Theme</label>
+                    <InputText id="ipt_roomTheme" @bind-Value="@editModel.Theme" class="form-control input-sm" placeholder="Room theme..." />
+                </div>
+                <div class="mb-3">
+                    <label for="ips_roomResponsable" class="form-label">Responsable</label>
+                    <InputSelect class="form-control input-sm" @bind-Value="@editModel.WaiterId">
+                        @foreach (var waiter in WaiterOptions)
+                        {
+                            <option value="@waiter.Id">@waiter.Text</option>
+                        }
+
+                    </InputSelect>
+                </div>
+                <div class="mb-3">
+                    <label for="ipt_roomDescription" class="form-label">Description</label>
+                    <InputTextArea id="ipt_roomDescription" maxlength="250" @bind-Value="@editModel.Description" class="form-control input-sm" placeholder="Room description..." />
+                </div>
+            </div>
+        </div>
+    </ChildBodyContext>
+</FormDialog>
+
+<ConfirmDialog @rendermode="InteractiveAuto" @ref="confirmDialog"></ConfirmDialog>
+
+
+@code {
+    private RoomFilter Filter { get; set; } = new RoomFilter();
+    private List<SelectItem> WaiterOptions { get; set; } = new List<SelectItem>();
+    private List<RoomViewModel> Rooms { get; set; } = new List<RoomViewModel>();
+    private FormDialogModel<RoomViewModel> RoomFormData { get; set; } = new FormDialogModel<RoomViewModel>();
+    private PagedResult<RoomViewModel> RoomPagedResult { get; set; } = new PagedResult<RoomViewModel>();
+    private ConfirmDialog confirmDialog;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshResults();
+    }
+
+    private async Task LoadWaiterOptions()
+    {
+        try
+        {
+            var response = await _httpClient.GetJsonNewtonAsync<ApiOperationResult<List<SelectItem>>>($"api/waiters/getwaiters/{bool.TrueString}");
+
+            if (response is null)
+            {
+                await ToastError("Something Happpened");
+            }
+            else
+            if (response.IsSuccess)
+            {
+                WaiterOptions = new List<SelectItem>(response.Data!);
+                StateHasChanged();
+            }
+            else
+            {
+                var errors = response.Errors?.Select(e => e.Message) ?? new List<string>() { "Something Happened" };
+                await ToastError(string.Join(", ", errors));
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+    private async Task RefreshResults()
+    {
+        try
+        {
+            var response = await _httpClient.PostJsonNewtonAsync<PagedResult<RoomViewModel>>("api/rooms/searchroomsbyfilter", Filter);
+
+            if (response is null || response.Error is not null)
+            {
+                await ToastError(response is null ? "No response was received" : response.Error?.Message ?? "Something Happpened");
+            }
+            else
+            {
+                RoomPagedResult = response;
+                Rooms = response.Results.ToList();
+                await LoadWaiterOptions();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+
+    }
+
+    private async Task OpenRoomShowDialog(RoomViewModel? room)
+    {
+        try
+        {
+            if (room is null)
+                room = new();
+
+            RoomFormData.Model = new RoomViewModel
+                {
+                    Id = room.Id,
+                    Name = room.Name,
+                    WaiterId = room.WaiterId,
+                    WaiterName = room.WaiterName,
+                    Theme = room.Theme,
+                    Description = room.Description
+                };
+
+            RoomFormData.State.Show();
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+    private async Task PostChanges()
+    {
+        try
+        {
+            var room = RoomFormData.Model;
+            var response = room!.Id == 0 ? await _httpClient.PostJsonNewtonAsync<ApiOperationResult?>("api/rooms/createroom", room.ToRoomInsertModel())
+                                        : await _httpClient.PutJsonNewtonAsync<ApiOperationResult?>("api/rooms/updateroom", room.ToRoomModel());
+
+            if (response is null)
+            {
+                RoomFormData.State.Show();
+                RoomFormData.State.AddErrors(new List<string>() { "No response was received" });
+            }
+            else
+            if (response.IsSuccess)
+            {
+                await ToastSuccess("Success", $"Room successfully {(room.Id == 0 ? "Created" : "Updated")}");
+                await RefreshResults();
+                RoomFormData.State.Hide();
+            }
+            else
+            {
+                var errors = response.Errors?.Select(e => e.Message) ?? new List<string>() { "Something Happened " };
+                RoomFormData.State.Show();
+                RoomFormData.State.AddErrors(errors.ToList());
+            }
+        }
+        catch (Exception ex)
+        {
+            RoomFormData.State.Show();
+            RoomFormData.State.AddError(ex.Message);
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+
+    }
+
+    private async Task DeleteRoom(int id)
+    {
+        try
+        {
+            if (!await confirmDialog.ShowDialog("Delete Room", new List<string>() { "Are you sure", "Changes cannot be undone" }))
+                return;
+
+            var response = await _httpClient.DeleteJsonNewtonAsync<ApiOperationResult>($"api/rooms/deleteroom/{id}");
+
+            if (response is null)
+            {
+                await ToastError("No response was received");
+                await RefreshResults();
+            }
+            else
+            if (response.IsSuccess)
+            {
+                await ToastSuccess("Success", "Room successfully deleted");
+                await RefreshResults();
+                StateHasChanged();
+            }
+            else
+            {
+                var errors = response.Errors?.Select(e => e.Message) ?? new List<string>() { "Something Happened" };
+                await ToastError(string.Join(", ", errors));
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        Filter = new RoomFilter();
+        await RefreshResults();
+        StateHasChanged();
+    }
+
+
+    private async Task RefreshPageByNumber(int page)
+    {
+        Filter.Page = page;
+        await RefreshResults();
+        StateHasChanged();
+    }
+
+
+}

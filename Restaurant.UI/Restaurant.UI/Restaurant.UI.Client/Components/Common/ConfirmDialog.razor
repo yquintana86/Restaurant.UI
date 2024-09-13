@@ -1,0 +1,119 @@
+﻿@using Restaurant.UI.Client.Models
+
+@if (FormData != null && FormData.State.Visible)
+{
+    <div class="modal fade show" data-bs-backdrop="static" data-bs-keyboard="false" style="display: block; padding-left: 0px;" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true" role="dialog">
+        <div class="modal-dialog modal-dialog-centered @Size">
+            <div class="modal-content">
+                <div class="modal-header form-dialog-header">
+                    <h5 class="modal-title" id="staticBackdropLabel"><strong>@FormData.Model!.Title</strong></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="Cancel"></button>
+                </div>
+                <div class="modal-body form-dialog-body">
+                    <div class="d-flex">
+                        <i class="@FormData.Model!.IconClass @FormData.Model!.IconHeightClass @FormData.Model!.IconClassColor"></i>
+                        <div class="ms-3">
+                            <p><strong>@FormData.Model!.Heading</strong></p>
+                            <ul>
+                                @foreach (var warning in @FormData.Model!.Warnings)
+                                {
+                                    <li>@warning</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer form-dialog-footer">
+                    @if (FormData.State.Proccesing)
+                    {
+                        <span class="btn btn-info disabled">
+                            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                            Proccesing
+                        </span>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrWhiteSpace(FormData.Model?.CancelBtnTxt))
+                        {
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="Cancel">@FormData.Model!.CancelBtnTxt</button>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(FormData.Model?.AcceptBtnTxt))
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="Accept">@FormData.Model!.AcceptBtnTxt</button>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    //This component uses Bootstrap 5.1
+
+    [Parameter]
+    public FormDialogModel<ConfirmDialogModel> FormData { get; set; } = new FormDialogModel<ConfirmDialogModel>();
+
+    [Parameter]
+    public ConfirmDialogModel? Model { get; set; }
+
+    [Parameter]
+    public string Size { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnAccept { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private bool _accepted;
+
+    private SemaphoreSlim sem = new SemaphoreSlim(0, 1);
+
+
+    protected override void OnInitialized()
+    {
+        FormData.Model = Model ?? new ConfirmDialogModel();
+    }
+
+    public async Task<bool> ShowDialog(string title, List<string> warnings)
+    {
+        try
+        {
+            var model = FormData.Model;
+            model!.Warnings = new List<string>(warnings);
+            model.Title = title;
+            FormData.State.Show();
+            StateHasChanged();
+            await sem.WaitAsync();
+        }
+        finally
+        {
+            if (!_accepted)
+                FormData.State.Hide();
+
+            StateHasChanged();
+        }
+
+        return _accepted;
+    }
+
+    public async Task Accept()
+    {
+        _accepted = true;
+        sem.Release();
+        await OnAccept.InvokeAsync();
+        FormData.State.Hide();
+    }
+
+    public async Task Cancel()
+    {
+        _accepted = false;
+        sem.Release();
+        await OnCancel.InvokeAsync();
+        FormData.State.Hide();
+    }
+}
+

@@ -1,0 +1,141 @@
+﻿@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using Restaurant.UI.Components.Layout
+@using Restaurant.UI.Data
+
+
+@layout LoginLayout
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Log in</PageTitle>
+
+<div class="row">
+    <div class="col-sm-4 col-md-3 center-div">
+        <section>
+            <StatusMessage Message="@errorMessage" />
+            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                <DataAnnotationsValidator />
+                    <div class="row mb-5 justify-content-center" >
+                        <div class="col-md-10">
+                        <img src="/images/banner.jpg" class="rounded img-fluid w-100" alt="Restaurant Logo" title="Restaurant" />
+                        </div>
+                    </div>
+                <div class="row mb-3 justify-content-center">
+                        <div class="col-md-10">
+                        <InputText @bind-Value="Input.Email" class="form-control rounded-pill outline-logging-red" autocomplete="username" aria-required="true" placeholder="Email" />
+                            <ValidationMessage For="() => Input.Email" class="text-danger" />
+                        </div>
+                    </div>
+                <div class="row mb-3 justify-content-center">
+                        <div class="col-md-10">
+                            <div class="input-group login-input-group">
+                            <InputText @bind-Value="Input.Password" id="ipt_password" type="password" class="form-control" autocomplete="current-password" aria-required="true"
+                                           placeholder="Password" aria-describedby="btn_ShowPassword" />
+                                <button class="btn btn-outline-secondary bg-white" type="button" id="btn_ShowPassword" title="Show/Hide Password" onclick="tooglePasswordShow('ipt_password','i_password')">
+                                    <span class="fa fa-eye-slash" id="i_password" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <ValidationMessage For="() => Input.Password" class="text-danger" />
+                        </div>
+                    </div>
+                <div class="checkbox mb-3 ms-5">
+                        <label class="form-label login-text-color">
+                            <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input " />
+                            Remember me
+                        </label>
+                    </div>
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+                        <button type="submit" class="w-100 btn rounded-pill btn-page-login">Log in</button>
+                    </div>
+                </div>
+                <div class="row mt-2 justify-content-center">
+                        <div class="col-md-10 d-flex justify-content-between">
+                            <span>
+                                <a href="Account/ForgotPassword" class="text-decoration-none login-text-color">Forgot your password?</a>
+                            </span>
+                            <span>
+                                <a class="text-decoration-none login-text-color" href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a>
+                            </span>
+                        </div>
+                        @* <span>
+                        <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
+                        </span> *@
+                    </div>
+               
+            </EditForm>
+        </section>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            // Clear the existing external cookie to ensure a clean login process
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        // This doesn't count login failures towards account lockout
+        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Error: Invalid login attempt.";
+        }
+    }
+
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+
+}

@@ -1,0 +1,68 @@
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<div class="top-row ps-3 navbar navbar-dark main-menu-header">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Restaurant</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable form-dialog-header" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <ul class="list-unstyled ps-0">
+                        <li class="mb-1">
+                            <NavLink class="btn nav-link " href="" Match="NavLinkMatch.All">
+                                <i class="fa fa-home item-menu-icon" aria-hidden="true"></i>
+                                Dashboard
+                            </NavLink>
+                        </li>
+                        <li class="mb-1">
+                            <NavLink class="btn btn-toggle nav-link collapsed" data-bs-toggle="collapse" data-bs-target="#settings-collapse" aria-expanded="true">
+                                <i class="fa fa-cog item-menu-icon" aria-hidden="true"></i>
+                                Settings
+                                <i class="fa fa-chevron-right" aria-hidden="true"></i>
+                            </NavLink>
+                            <div class="collapse show" id="settings-collapse">
+                                <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+                                    <li><a href="setting/shift" class="submenu-item-firtlevel rounded">Shifts</a></li>
+                                    <li><a href="setting/waiter" class="submenu-item-firtlevel rounded">Waiters</a></li>
+                                    <li><a href="setting/rooms" class="submenu-item-firtlevel rounded">Rooms</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        @*  <li class="border-top my-3"></li>*@
+                    </ul>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
+

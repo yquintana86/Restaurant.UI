@@ -1,0 +1,22 @@
+@inject IJSRuntime JSRuntime
+@inherits InputText
+
+<div class="input-group">
+    <span class="input-group-text" id="timer-icon">
+        <i class="fa fa-clock-o" aria-hidden="true"></i>
+    </span>
+
+    <input type="text" id="@Id" @bind="@CurrentValue" class="form-control timepicker @CssClass" aria-describedby="timer-icon" />
+</div>
+
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JSRuntime.InvokeAsync<object>("CreateTimerPicker", Id);
+    }
+
+}

@@ -1,0 +1,12 @@
+@inject IJSRuntime _jsHelper;
+
+@code {
+    [Parameter]
+    public string PageTitle { get; set; } = "Restaurant";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _jsHelper.InvokeAsync<object>("setPageTitle", PageTitle);
+    }
+
+}
