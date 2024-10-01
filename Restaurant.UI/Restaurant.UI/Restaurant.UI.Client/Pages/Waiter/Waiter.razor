@@ -11,8 +11,9 @@
 
 <AddPageTitle PageTitle="Waiters"/>
 
-<EditForm OnValidSubmit="RefreshResults" Model="@Filter" FormName="WaiterFilter">
-    <div class="card">
+<EditForm OnValidSubmit="RefreshResults" OnInvalidSubmit="ShowFilterErrors" Model="@Filter" FormName="WaiterFilter">
+    <DataAnnotationsValidator/>
+    <div class="card">  
         <div class="card-header">
             <b>Filters</b>
         </div>
@@ -36,33 +37,35 @@
                 </div>
                 <div class="col-md-4">
                     <div class="row">
-                        <label for="ipt_shiftFilter" class="col-sm-2 col-form-label">Shift</label>
-                        <div class="col-sm-8">
-                            <InputSelect id="ipt_shiftFilter" @bind-Value="@Filter.ShiftId" class="form-control outline-logging-red input-sm">
-                                <option value=""></option>
-                                @foreach (var shift in ShiftItems)
-                                {
-                                    <option value="@shift.Id">@shift.Text</option>
-                                }
-                            </InputSelect>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row mt-2">
-                <div class="col-md-4">
-                    <div class="row">
                         <label for="ipn_SalaryFromFilter" class="col-sm-3 col-label-form">Salary Form</label>
                         <div class="col-sm-8">
                             <InputNumber id="ipn_SalaryFromFilter" @bind-Value="@Filter.SalaryFrom" class="form-control outline-logging-red input-sm" />
                         </div>
                     </div>
-                </div>
+                </div>                
+            </div>
+            <div class="row mt-2">                
                 <div class="col-md-4">
                     <div class="row">
                         <label for="ipn_SalaryToFilter" class="col-sm-3 col-form-label">Salary To</label>
                         <div class="col-sm-8">
                             <InputNumber id="ipn_SalaryToFilter" @bind-Value="@Filter.SalaryTo" class="form-control outline-logging-red input-sm" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="dt_StartDate" class="col-sm-3 col-form-label">Start Date</label>
+                        <div class="col-sm-8">
+                            <DatePickerBase @rendermode="InteractiveAuto" Id="dt_StartDate" IsCurrentYear="false" @bind-Value="Filter.DateFromStr" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="dt_EndDate" class="col-sm-3 col-form-label">End Date</label>
+                        <div class="col-sm-8">
+                            <DatePickerBase @rendermode="InteractiveAuto" Id="dt_EndDate" IsCurrentYear="false" @bind-Value="Filter.DateToStr" />
                         </div>
                     </div>
                 </div>
@@ -74,7 +77,7 @@
                     <a title="Clear Search Parameters" class="btn btn-sm btn-warning" @onclick="ClearSearch">
                         <i class="fa fa-eraser" aria-hidden="true"></i>
                     </a>
-                    <a title="New Shift" class="btn btn-sm btn-primary mx-1" @onclick="() => OpenWaiterShowDialog(null)">
+                    <a title="New Waiter" class="btn btn-sm btn-primary mx-1" @onclick="() => OpenWaiterShowDialog(null)">
                         <i class="fa fa-plus" aria-hidden="true"></i>
                     </a>
                     <button type="submit" title="Search" class="btn btn-sm btn-success">
@@ -91,10 +94,12 @@
         <table class="table table-hover table-striped">
             <thead>
                 <tr>
-                    <th class="w-25">First Name</th>
-                    <th class="w-25">Last Name</th>
-                    <th style="width:20%;">Salary</th>
-                    <th class="w-25">Shift</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Salary</th>
+                    <th>Room Responsible</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
                     <th style="width:5%;">
                         <div class="pull-right me-3">
                             <i class="fa fa-cog" aria-hidden="true"></i>
@@ -109,7 +114,9 @@
                         <td>@waiter.FirstName</td>
                         <td>@waiter.LastName</td>
                         <td>@waiter.Salary.ToString("N2")</td>
-                        <td>@waiter.SelectedShift.Text</td>
+                        <td>@waiter.RoomName</td>
+                        <td>@waiter.Start.ToShortDateString()</td>
+                        <td>@(waiter.End is null ? "" : waiter.End.Value.ToShortDateString()) </td >
                         <td>
                             <div class="d-flex justify-content-end align-items-center">
                                 <a class="me-2 cursor-pointer" title="Update" @onclick="() => OpenWaiterShowDialog(waiter)">
@@ -138,7 +145,7 @@
 
 <FormDialog @rendermode="InteractiveAuto" FormData="WaiterFormData"
             Title="@((WaiterFormData.Model is null || WaiterFormData.Model.Id == 0) ? "Add New Waiter" : "Update Waiter")"
-            OnAccept="PostChanges" Context="editModel">
+            OnAccept="PostChanges" Context="editModel" Styles="@((WaiterFormData.Model is not null && WaiterFormData.Model.Id > 0) ? "z-index:1;" : "")">
     <ChildBodyContext>
         <div class="mb-3">
             <label for="ipt_WaiterFirstName" class="form-label">First Name</label>
@@ -152,16 +159,14 @@
             <label for="ipn_WaiterSalary" class="form-label">Salary</label>
             <InputNumber id="ipn_WaiterSalary" @bind-Value="@editModel.Salary" class="form-control input-sm" />
         </div>
-        <div class="mb-3">
-            <label for="ipt_Shift" class="form-label">Shift</label>
-            <InputSelect id="ips_Shift" @bind-Value="@editModel.SelectedShift.Id" class="form-control input-sm">
-                <option value=""></option>
-                @foreach (var shiftOption in ShiftItems)
-                {
-                    <option value="@shiftOption.Id">@shiftOption.Text</option>
-                }
-            </InputSelect>
-        </div>
+        @if (editModel.Id > 0)
+        {
+            <div class="mb-3">
+                <label for="ipt_StartDate" class="form-label">Start Date</label>
+                <DatePickerBase @rendermode="InteractiveAuto" Id="ipt_StartDate" @bind-Value="@editModel.StartStr" />
+            </div>
+        }
+
     </ChildBodyContext>
 
 </FormDialog>
@@ -171,25 +176,23 @@
 
 @code {
 
-    private WaiterFilter Filter { get; set; } = new WaiterFilter() { RequestCount = true };
+    private WaiterFilterModel Filter { get; set; } = new WaiterFilterModel() { RequestCount = true };
     private List<WaiterViewModel> Waiters { get; set; } = new List<WaiterViewModel>();
-    private List<SelectItem> ShiftItems { get; set; } = new List<SelectItem>();
     private ConfirmDialog _confirmDialog;
     private FormDialogModel<WaiterViewModel> WaiterFormData { get; set; } = new FormDialogModel<WaiterViewModel>();
-    private PagedResult<WaiterModel> PagedResult { get; set; } = new PagedResult<WaiterModel>();
+    private PagedResult<WaiterViewModel> PagedResult { get; set; } = new PagedResult<WaiterViewModel>();
 
 
     protected override async Task OnInitializedAsync()
     {
         await RefreshResults();
-        await LoadShiftOptionsItems();
     }
 
     private async Task RefreshResults()
     {
         try
         {
-            var response = await _httpClient.PostJsonNewtonAsync<PagedResult<WaiterModel>>("api/waiters/getwaitersbyfilter", Filter);
+            var response = await _httpClient.PostJsonNewtonAsync<PagedResult<WaiterDto>>("api/waiters/getwaitersbyfilter", Filter);
 
             if (response is null || response.Error is not null)
             {
@@ -197,48 +200,29 @@
             }            
             else
             {
-                PagedResult = response;
-                Waiters = response.Results.Select(w => new WaiterViewModel
+                var waiters = response.Results.Select(w => new WaiterViewModel
                     {
                         Id = w.Id,
                         FirstName = w.FirstName,
                         LastName = w.LastName,
                         Salary = w.Salary,
-                        SelectedShift = new SelectItem
-                        {
-                            Id = w.Shift.Id.ToString(),
-                            Text = w.Shift.Name
-                        }
+                        Start =  w.Start,
+                        End = w.End,
+                        RoomName = w.RoomName
                     }).ToList();
-            }
 
-        }
-        catch (Exception ex)
-        {
-            await ToastError(ex.Message);
-        }
-    }
+                Waiters = waiters;
 
-    private async Task LoadShiftOptionsItems()
-    {
-        try
-        {
-            var response = await _httpClient.GetJsonNewtonAsync<ApiOperationResult<List<SelectItem>>>("api/shift/getallshifts");
-
-            if (response is null)
-            {
-                await ToastError("Something Happpened");
-            }
-            else
-            if (response.IsSuccess)
-            {
-                ShiftItems = new List<SelectItem>(response?.Data ?? new List<SelectItem>());
-            }
-            else
-            {
-                var errors = response.Errors?.Select(e => e.Message);
-                await ToastError(string.Join(", ", errors?.ToList() ?? new List<string>() { "Something Happened" }));
-
+                PagedResult = new PagedResult<WaiterViewModel>
+                {
+                 ItemCount = response.ItemCount,
+                 Currentpage  = response.Currentpage,
+                 HasNextPage = response.HasNextPage,
+                 PageCount = response.PageCount,
+                 PageSize = response.PageSize,
+                 TotalItemCount = response.TotalItemCount,
+                 Results = waiters
+                };
             }
         }
         catch (Exception ex)
@@ -260,11 +244,8 @@
                     FirstName = waiter.FirstName,
                     LastName = waiter.LastName,
                     Salary = waiter.Salary,
-                    SelectedShift = new SelectItem
-                    {
-                        Id = waiter.SelectedShift?.Id ?? "",
-                        Text = waiter.SelectedShift?.Text ?? ""
-                    }
+                    StartStr = waiter.StartStr,
+                    End = waiter.End
                 };
 
             WaiterFormData.State.Show();
@@ -282,7 +263,7 @@
         {
             var waiter = WaiterFormData.Model;
             var response = waiter!.Id == 0 ? await _httpClient.PostJsonNewtonAsync<ApiOperationResult>("api/waiters/createwaiter", waiter.ToWaiterInsertModel())
-                                    : await _httpClient.PutJsonNewtonAsync<ApiOperationResult>("api/waiters/updatewaiter", waiter.ToWaiterModel());
+                                    : await _httpClient.PutJsonNewtonAsync<ApiOperationResult>("api/waiters/updatewaiter", waiter.ToWaiterUpdateModel());
             
             if (response is null)
             {
@@ -366,6 +347,12 @@
         Filter.Page = num;
         await RefreshResults();
         StateHasChanged();
+    }
+
+    private async Task ShowFilterErrors(EditContext context)
+    {
+        var errors = context.GetValidationMessages().Select(vm => vm);
+        await ToastError(string.Join(", ", errors));
     }
 
 }

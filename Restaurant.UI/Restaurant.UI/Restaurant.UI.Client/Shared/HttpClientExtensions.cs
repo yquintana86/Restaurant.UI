@@ -55,7 +55,10 @@ public static class HttpClientExtensions
 
     public static async Task<T?> SendNewtonAsync<T>(this HttpClient httpClient, HttpMethod method, string uri, object content)
     {
-        SetAuthentication(httpClient);
+        var responseStringContent = string.Empty;
+        try
+        {
+            SetAuthentication(httpClient);
 
         var contentSerializable = JsonConvert.SerializeObject(content);
         var finalUrl = uri.Contains("http") ? uri : $"{_apiBaseURL}{uri}";
@@ -73,10 +76,9 @@ public static class HttpClientExtensions
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             throw new Exception("Unauthorized Access");        
 
-        var responseStringContent = string.Empty;
+        
 
-        try
-        {
+        
             responseStringContent = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<T>(responseStringContent);
         }

@@ -4,7 +4,7 @@
 
 @if (FormData != null && FormData.State.Visible)
 {
-    <div class="modal fade show" data-bs-backdrop="static" data-bs-keyboard="false" style="display: block; padding-left: 0px;" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true" role="dialog">
+    <div class="modal fade show" data-bs-backdrop="static" data-bs-keyboard="false" style="display: block; padding-left: 0px; @Styles" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true" role="dialog">
         <div class="modal-dialog modal-dialog-centered @Size">
             <EditForm Model="FormData.Model" OnValidSubmit="Submit">
                 <div class="modal-content">
@@ -19,7 +19,7 @@
                                     <ValidationSummary />                              
 
                                 @if (FormData.State.Errors.Any())
-                                {
+                                { 
                                     <ul class="validation-errors">
                                         @foreach (string error in FormData.State.Errors)
                                         {
@@ -99,6 +99,9 @@
     public string Size { get; set; } = "";
 
     [Parameter]
+    public string Styles { get; set; } = "";
+
+    [Parameter]
     public EventCallback OnAccept { get; set; }
 
     [Parameter]
@@ -124,7 +127,7 @@
 
             if (errors.Any())
             {
-                formValidator?.DisplayErrors(errors);
+                formValidator!.DisplayErrors(errors);
                 FormData.State.Show();
                 return false;
             }

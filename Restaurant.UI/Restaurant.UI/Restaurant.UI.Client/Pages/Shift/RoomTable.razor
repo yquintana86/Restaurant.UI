@@ -1,0 +1,504 @@
+﻿@page "/setting/roomtable"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using Restaurant.UI.Client.Components
+@using Restaurant.UI.Client.Components.Common
+@using Restaurant.UI.Client.Models
+@using Restaurant.UI.Client.Shared
+@using SharedLib
+@using SharedLib.Models.Common
+@using SharedLib.Models.Shift
+
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(false))
+@inherits PageBase
+
+<AddPageTitle PageTitle="Room Tables" />
+
+
+<EditForm OnValidSubmit="RefreshResults" OnInvalidSubmit="ShowFilterErrors" Model="@Filter" FormName="RoomTablesFilter">
+    <DataAnnotationsValidator />
+    <div class="card">
+        <div class="card-header">
+            <b>Filters</b>
+        </div>
+        <div class="card-body bg-light">
+            <div class="row mb-2">
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="ips_RoomSearch" class="col-md-2 col-form-label">Room</label>
+                        <div class="col-md-8">
+                            <InputSelect id="ips_RoomSearch" @bind-Value="@Filter.RoomId" class="form-control outline-logging-red input-sm">
+                                <option value=""></option>
+                                @foreach (var options in RoomOptions)
+                                {
+                                    <option value="@options.Id">@options.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="ipn_QtyFrom" class="col-sm-3 col-form-label">Capacity From</label>
+                        <div class="col-md-8">
+                            <InputNumber id="ipn_QtyFrom" @bind-Value="@Filter.TotalQtyFrom" pattern="[0-9]+" min="0" title="Please enter number only" class="form-control outline-logging-red input-sm" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="ipn_QtyTo" class="col-sm-3 col-form-label">Capacity To</label>
+                        <div class="col-md-8">
+                            <InputNumber id="ipn_QtyTo" @bind-Value="@Filter.TotalQtyTo" pattern="[0-9]+" min="0" title="Please enter number only" class="form-control outline-logging-red input-sm" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="ips_SearchWaiter" class="col-md-2 col-form-label">Waiter</label>
+                        <div class="col-md-8">
+                            <InputSelect id="ips_SearchWaiter" @bind-Value="@Filter.WaiterId" class="form-control outline-logging-red input-sm">
+                                <option value="" />
+                                @foreach (var waiter in WaiterOptions)
+                                {
+                                    <option value="@waiter.Id">@waiter.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row">
+                        <label for="ips_StatusTypeSearch" class="col-md-3 col-form-label">Status</label>
+                        <div class="col-md-8">
+                            <InputSelect id="ips_StatusTypeSearch" @bind-Value="@Filter.Status" class="form-control outline-logging-red input-sm">
+                                <option value="" />
+                                @foreach (var type in Enum.GetValues<RoomTableStatusType>())
+                                {
+                                    <option value="@type">@type.ToString()</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="row">
+                <div class="col-md-12 d-flex align-items-center justify-content-end">
+                    <a title="Clear Search Parameters" @onclick="@Clear" class="btn btn-warning btn-sm">
+                        <i class="fa fa-eraser" aria-hidden="true"></i>
+                    </a>
+                    <a title="New Shift" @onclick="()=> OpenShiftDialog(null)" class="btn btn-primary btn-sm mx-1">
+                        <i class="fa fa-plus" aria-hidden="true"></i>
+                    </a>
+                    <button type="submit" title="Search" class="btn btn-success btn-sm">
+                        <i class="fa fa-search" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+<FormDialog @rendermode="InteractiveAuto" FormData="RoomTableFormData" Title="@((RoomTableFormData.Model is null || RoomTableFormData.Model.Id == 0) ? "Add New Room Table" : "Update Room Table")"
+            OnAccept="PostChanges" Context="editModel">
+    <ChildBodyContext>
+        @if (editModel.Id == 0)
+        {
+            <div class="mb-3">
+                <label for="ips_Room" class="form-label input-sm">Room</label>
+                <InputSelect id="ips_Room" TValue="int" @bind-Value="@editModel.RoomId" class="form-control outline-logging-red input-sm">
+                    @foreach (var option in RoomOptions)
+                    {
+                        <option value="@option.Id">@option.Text</option>
+                    }
+                </InputSelect>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <label for="spn_Room" class="form-label input-sm">Room</label>
+                <span id="spn_Room" class="form-control">@editModel.RoomName</span>
+            </div>
+            <div class="mb-3">
+                <label for="ips_RoomTableStatus" class="form-label">Status</label>
+                <InputSelect id="ips_RoomTableStatus" @bind-Value="editModel.Status" class="form-control outline-logging-red">
+                    @foreach (var status in Enum.GetValues(typeof(RoomTableStatusType)))
+                    {
+                        <option value="@status">@status.ToString()</option>
+                    }
+                </InputSelect>
+            </div>
+        }
+        <div class="mb-3">
+            <label for="ipn_Qty" class="form-label">Capacity</label>
+            <InputNumber Id="ipn_Qty" @bind-Value="@editModel.TotalQty" class="form-control outline-logging-red" pattern="[0-9]+" title="Please enter number only" />
+        </div>
+
+        <div class="form-check mb-1">
+            <InputCheckbox id="chk_hasResponsible" class="form-check-input custom-app-color" @bind-Value="editModel.HasResponsible"/>
+            <label for="chk_hasResponsible" class="form-check-label">Responsible</label>
+        </div>
+
+        <div class="mb-3 border @(editModel.HasResponsible ? string.Empty : "disabledDiv")" style="height:100px;padding:5px;">
+            @if (editModel.HasResponsible)
+            {
+                <label for="ips_Waiter" class="form-label">Waiter</label>
+                <InputSelect id="ips_Waiter" @bind-Value="@editModel.WaiterId" class="form-control outline-logging-red input-sm">
+                    <option value="">Select...</option>
+                    @foreach (var option in WaiterOptions)
+                    {
+                        <option value="@option.Id">@option.Text</option>
+                    }
+                </InputSelect>
+            }
+            else
+            {
+                <label for="spn_Waiter" class="form-label">Waiter</label>
+                <span class="form-control bg-secondary">&nbsp;</span>
+            }
+        </div>
+
+
+    </ChildBodyContext>
+</FormDialog>
+
+
+<div class="row table-row">
+    <div class="col-md-12">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th class="w-25">Code</th>
+                    <th>Room</th>
+                    <th>Status</th>
+                    <th>Capacity</th>
+                    <th>Waiter</th>
+                    <th>
+                        <div class="pull-right me-3">
+                            <span class="fa fa-cog"></span>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var roomTable in RoomTables)
+                {
+                    <tr>
+                        <td>@roomTable.Id</td>
+                        <td>@roomTable.RoomName</td>
+                        <td>@roomTable.Status.ToString()</td>
+                        <td>@roomTable.TotalQty</td>
+                        <td>@(roomTable.WaiterFullName ?? string.Empty) </td>
+                        <td>
+                            <div class="d-flex align-items-center justify-content-end">
+                                <a title="Update" @onclick="()=> OpenShiftDialog(roomTable)" class="me-2 cursor-pointer">
+                                    <i class="fa fa-edit text-secondary"></i>
+                                </a>
+                                <a title="Delete" @onclick="() => DeleteShift(roomTable.Id, roomTable.RoomId)" class="cursor-pointer">
+                                    <i class="fa fa-trash-o text-danger"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<hr class="bg-black w-100 mt-0" style="padding:2px;" />
+<div class="row">
+    <div class="col-md-12">
+        <Pager Result="@PagedResult" OnPagedChanged="@(async (int n)=> await RefreshPageByNumber(n))" />
+    </div>
+</div>
+
+
+<ConfirmDialog @rendermode="InteractiveAuto" @ref="_confirmDialog" />
+
+@code {
+    private FormDialogModel<RoomTableViewModel> RoomTableFormData { get; set; } = new FormDialogModel<RoomTableViewModel>();
+    private List<RoomTableViewModel> RoomTables { get; set; } = new();
+    private ConfirmDialog _confirmDialog;
+    private PagedResult<RoomTableViewModel> PagedResult { get; set; } = new PagedResult<RoomTableViewModel>();
+    private List<SelectItem> RoomOptions = new List<SelectItem>();
+    private List<SelectItem> WaiterOptions = new List<SelectItem>();
+    private string FormDialogCheckCssClass { get; set; } = "";
+
+
+    private RoomTableFilterModel Filter { get; set; } = new()
+        {
+            RequestCount = true
+
+        };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshResults();
+        await LoadRooms();
+        await LoadWaiters();
+    }
+
+
+
+    private async Task LoadRooms()
+    {
+        try
+        {
+            var result = await _httpClient.GetJsonNewtonAsync<ApiOperationResult<List<SelectItem>>>("api/rooms/getrooms");
+
+            if (result is null || result.Errors is not null)
+            {
+                var errors = string.Empty;
+                if (result is not null)
+                {
+                    var errorList = result.Errors!.Select(e => e.Message);
+                    errors = string.Join(", ", errorList);
+                }
+
+                await ToastError(result is null ? "Something happend" : errors);
+            }
+            else if (result.IsSuccess)
+            {
+                RoomOptions = new List<SelectItem>(result.Data!);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+    private async Task LoadWaiters()
+    {
+        try
+        {
+            var result = await _httpClient.GetJsonNewtonAsync<ApiOperationResult<List<SelectItem>>>("api/waiters/getwaiters");
+
+            if (result is null || result.Errors is not null)
+            {
+                var errors = string.Empty;
+                if (result is not null)
+                {
+                    var errorList = result.Errors!.Select(e => e.Message);
+                    errors = string.Join(", ", errorList);
+                }
+
+                await ToastError(result is null ? "Something happend" : errors);
+            }
+            else if (result.IsSuccess)
+            {
+                WaiterOptions = new List<SelectItem>(result.Data!);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+
+
+
+    public async Task RefreshResults()
+    {
+        try
+        {
+            var response = await _httpClient.PostJsonNewtonAsync<PagedResult<RoomTableDto>?>("api/roomtables/getroomtablesbyfilter", Filter);
+
+            if (response is null || response.Error is not null)
+            {
+                await ToastError(response is null ? "No response was received" : response.Error?.Message ?? "Something Happpened");
+            }
+            else
+            {
+                var roomTables = response.Results.Select(rt => new RoomTableViewModel
+                    {
+                        Id = rt.Id,
+                        RoomId = rt.RoomId,
+                        RoomName = rt.RoomName,
+                        Status = rt.Status,
+                        TotalQty = rt.TotalQty,
+                        WaiterId = rt.WaiterId,
+                        WaiterFullName = rt.WaiterFullName,
+                        HasResponsible = rt.WaiterId is null
+                    }).ToList();
+
+                RoomTables = roomTables;
+
+                PagedResult = new PagedResult<RoomTableViewModel>()
+                    {
+                        Currentpage = response.Currentpage,
+                        HasNextPage = response.HasNextPage,
+                        ItemCount = response.ItemCount,
+                        PageCount = response.PageCount,
+                        PageSize = response.PageSize,
+                        TotalItemCount = response.TotalItemCount,
+                        Results = roomTables
+                    };
+
+                RoomTables = PagedResult.Results.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+    public async Task OpenShiftDialog(RoomTableViewModel? roomTable)
+    {
+        try
+        {
+            if (roomTable is null)
+            {
+                roomTable = new RoomTableViewModel()
+                    {
+                        RoomId = RoomOptions is not null && RoomOptions.Any() ? int.Parse(RoomOptions.First().Id) : 0,
+                        HasResponsible = false
+                    };
+            }
+
+            RoomTableFormData.Model = new RoomTableViewModel
+                {
+                    Id = roomTable.Id,
+                    WaiterId = roomTable.WaiterId,
+                    RoomId = roomTable.RoomId,
+                    RoomName = roomTable.RoomName,
+                    Status = roomTable.Status,
+                    TotalQty = roomTable.TotalQty,
+                    WaiterFullName = roomTable.WaiterFullName,
+                    HasResponsible = roomTable.HasResponsible
+                };
+
+            RoomTableFormData.State.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+    }
+
+    private async Task Clear()
+    {
+        Filter = new() { RequestCount = true };
+        await RefreshResults();
+        StateHasChanged();
+    }
+
+    public async Task PostChanges()
+    {
+        var roomTable = RoomTableFormData.Model;
+
+        try
+        {
+            if (roomTable is null)
+            {
+                await ToastError("Invalid Shift");
+                return;
+            }
+
+            var response = roomTable.Id <= 0 ? await _httpClient.PostJsonNewtonAsync<ApiOperationResult?>("api/roomtables/createroomtable", roomTable.ToRoomTableInsertModel())
+                                        : await _httpClient.PutJsonNewtonAsync<ApiOperationResult?>("api/roomtables/updateroomtable", roomTable.ToRoomTableModel());
+
+            if (response is null)
+            {
+                RoomTableFormData.State.Show();
+                RoomTableFormData.State.AddErrors(new List<string>() { "No response was received" });
+            }
+            else
+            if (response.IsSuccess)
+            {
+                await ToastSuccess("Success", $"Shift successfully {(roomTable.Id <= 0 ? "created" : "updated")}");
+                RoomTableFormData.State.Hide();
+                await RefreshResults();
+            }
+            else
+            {
+                var errors = response.Errors?.Select(e => e.Message) ?? new List<string> { "Something happened" };
+                RoomTableFormData.State.Show();
+                RoomTableFormData.State.AddErrors(errors.ToList());
+
+            }
+        }
+        catch (Exception ex)
+        {
+            RoomTableFormData.State.AddError(ex.Message);
+            RoomTableFormData.State.Show();
+        }
+        finally
+        {
+            StateHasChanged();
+
+        }
+    }
+
+
+    public async Task DeleteShift(int id, int roomId)
+    {
+        try
+        {
+            if (id == 0)
+                await ToastError("Incorrect room table Id, cannot be deleted");
+
+            if (roomId == 0)
+                await ToastError("Incorrect room Id, cannot be deleted");
+
+            if (!await _confirmDialog.ShowDialog("Delete", new List<string> { "Are you going to delete this item" }))
+                return;
+
+            var response = await _httpClient.DeleteJsonNewtonAsync<ApiOperationResult>($"api/roomtables/{id}/{roomId}");
+
+            if (response is null)
+            {
+                await ToastError("No response was received");
+                await RefreshResults();
+            }
+            else
+            if (response.IsSuccess)
+            {
+                await RefreshResults();
+                await ToastSuccess("Success", "Shift deleted");
+            }
+            else
+            {
+                var errors = response.Errors?.Select(e => e.Message);
+                await ToastError(string.Join(", ", errors?.ToList() ?? new()));
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastError(ex.Message);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task RefreshPageByNumber(int num)
+    {
+        if (num <= 0 || num > PagedResult.PageCount)
+            await ToastError("Page selected doesn't exist");
+
+        Filter.Page = num;
+        await RefreshResults();
+        StateHasChanged();
+    }
+
+    private async Task ShowFilterErrors(EditContext context)
+    {
+        var errors = context.GetValidationMessages().Select(vm => vm);
+        await ToastError(string.Join(", ", errors));
+    }
+
+    
+}

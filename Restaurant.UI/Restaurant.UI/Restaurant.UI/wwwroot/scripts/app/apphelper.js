@@ -24,8 +24,22 @@
     }
 }
 
-function CreateDatePicker(ctrlDateId) {
-    $('#' + ctrlDateId).datepicker();
+function CreateDatePicker(ctrlDateId, isCurrentDate = true) {
+    $('#' + ctrlDateId).datepicker({
+        dateFormat: 'yy-mm-dd',
+        showButtonPanel: true,
+        changeMonth: true,
+        changeYear: true,
+        yearRange: '2020:2030',
+        buttonImageOnly: true,
+        minDate: new Date(2020, 1 - 1, 1),
+        maxDate: '+30Y',
+        inline: true,
+        onSelect: function () {
+            var domelem = document.getElementById(ctrlDateId);
+            mutateDOM(domelem, domelem.value);
+        }
+    });
 }
 
 function CreateTimerPicker(ctrlTimerId) {
@@ -83,7 +97,7 @@ function mutateDOM(ElementDOM, value) {
 function tooglePasswordShow(inputId, iconId) {
 
     let type = $('#' + inputId).prop('type');
-    
+
     if (type == 'password') {
         $('#' + inputId).prop('type', ' ');
         $('#' + iconId).prop('class', 'fa fa-eye ');

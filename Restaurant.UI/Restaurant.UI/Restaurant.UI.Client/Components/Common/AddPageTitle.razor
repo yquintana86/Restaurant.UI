@@ -6,7 +6,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _jsHelper.InvokeAsync<object>("setPageTitle", PageTitle);
+      await _jsHelper.InvokeAsync<object>("setPageTitle", PageTitle);
     }
 
 }

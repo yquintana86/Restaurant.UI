@@ -30,11 +30,11 @@
                 </div>
                 <div class="col-md-4">
                     <div class="row mb-3">
-                        <label for="ips_roomFilterWaiter" class="col-md-4 col-form-label">Responsable Waiter</label>
+                        <label for="ips_roomFilterWaiter" class="col-md-4 col-form-label">Responsible Waiter</label>
                         <div class="col-md-8">
                             <InputSelect id="ips_roomFilterWaiter" @bind-Value="@Filter.WaiterId" class="form-control outline-logging-red input-sm">
                                 <option value=""></option>
-                                @foreach (var option in WaiterOptions)
+                                @foreach (var option in ResponsibleWaiters)
                                 {
                                     <option value="@option.Id">@option.Text</option>
                                 }
@@ -66,7 +66,7 @@
             <thead>
                 <tr>
                     <th style="width: 10%;">Name</th>
-                    <th style="width: 15%;">Responsable Waiter</th>
+                    <th style="width: 15%;">Responsible Waiter</th>
                     <th style="width: 20%;">Theme</th>
                     <th style="width: 50%;">Description</th>
                     <th style="width: 5%;">
@@ -121,7 +121,7 @@
                     }
                     else
                     {
-                        <span class="form-control"> @editModel.Name </span>
+                        <span id="ipt_roomName" class="form-control"> @editModel.Name </span>
                     }
                 </div>
                 <div class="mb-3">
@@ -129,13 +129,12 @@
                     <InputText id="ipt_roomTheme" @bind-Value="@editModel.Theme" class="form-control input-sm" placeholder="Room theme..." />
                 </div>
                 <div class="mb-3">
-                    <label for="ips_roomResponsable" class="form-label">Responsable</label>
-                    <InputSelect class="form-control input-sm" @bind-Value="@editModel.WaiterId">
-                        @foreach (var waiter in WaiterOptions)
+                    <label for="ips_roomResponsible" class="form-label">Responsible</label>
+                    <InputSelect id="ips_roomResponsible" class="form-control input-sm" @bind-Value="@editModel.WaiterId">
+                        @foreach (var waiter in NonResponsibleWaiters)
                         {
                             <option value="@waiter.Id">@waiter.Text</option>
                         }
-
                     </InputSelect>
                 </div>
                 <div class="mb-3">
@@ -151,8 +150,9 @@
 
 
 @code {
-    private RoomFilter Filter { get; set; } = new RoomFilter();
-    private List<SelectItem> WaiterOptions { get; set; } = new List<SelectItem>();
+    private RoomFilterModel Filter { get; set; } = new RoomFilterModel();
+    private List<SelectItem> ResponsibleWaiters { get; set; } = new List<SelectItem>();
+    private List<SelectItem> NonResponsibleWaiters { get; set; } = new List<SelectItem>();
     private List<RoomViewModel> Rooms { get; set; } = new List<RoomViewModel>();
     private FormDialogModel<RoomViewModel> RoomFormData { get; set; } = new FormDialogModel<RoomViewModel>();
     private PagedResult<RoomViewModel> RoomPagedResult { get; set; } = new PagedResult<RoomViewModel>();
@@ -162,13 +162,14 @@
     protected override async Task OnInitializedAsync()
     {
         await RefreshResults();
+        await LoadWaiters(true);
     }
 
-    private async Task LoadWaiterOptions()
+    private async Task LoadWaiters(bool responsible)
     {
         try
         {
-            var response = await _httpClient.GetJsonNewtonAsync<ApiOperationResult<List<SelectItem>>>($"api/waiters/getwaiters/{bool.TrueString}");
+            var response = await _httpClient.GetJsonNewtonAsync<ApiOperationResult<List<SelectItem>>>($"api/waiters/getwaiters/{responsible}");
 
             if (response is null)
             {
@@ -177,7 +178,11 @@
             else
             if (response.IsSuccess)
             {
-                WaiterOptions = new List<SelectItem>(response.Data!);
+                if (responsible)
+                    ResponsibleWaiters = response.Data!;
+                else
+                    NonResponsibleWaiters = response.Data!;
+
                 StateHasChanged();
             }
             else
@@ -206,7 +211,6 @@
             {
                 RoomPagedResult = response;
                 Rooms = response.Results.ToList();
-                await LoadWaiterOptions();
                 StateHasChanged();
             }
         }
@@ -221,6 +225,14 @@
     {
         try
         {
+            await LoadWaiters(false);
+
+            if (!NonResponsibleWaiters.Any())
+            {
+                await ToastError("There are no waiters available to be responsible of the new rooms");
+                return;
+            }
+
             if (room is null)
                 room = new();
 
@@ -316,7 +328,7 @@
 
     private async Task ClearSearch()
     {
-        Filter = new RoomFilter();
+        Filter = new RoomFilterModel();
         await RefreshResults();
         StateHasChanged();
     }

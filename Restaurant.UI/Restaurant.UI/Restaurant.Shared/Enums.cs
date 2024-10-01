@@ -1,8 +1,8 @@
 ﻿namespace SharedLib;
 
-public enum TableStatusType
+public enum RoomTableStatusType
 {
     Unreserved = 0,
-    //Reserved = 5,
+    Reserved = 5,
     Busy = 10
 }
